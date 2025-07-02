@@ -66,6 +66,8 @@ if legajo:
                 registros = gestiones[gestiones['comercio'] == comercio]
                 if registros.empty:
                     return "🔴 No gestionado"
+                if registros['respuesta'].str.contains("cerrada definitiva", case=False, na=False).any():
+                    return "⚫ Cerrado"
                 if registros['contacto_exitoso'].str.contains("Sí").any():
                     return "🟢 Contactado"
                 if registros['nueva_fecha'].notna().any():
@@ -91,6 +93,8 @@ if legajo:
                     return [0, 200, 0]  # verde
                 elif "🟠" in estado:
                     return [255, 165, 0]  # naranja
+                elif "⚫" in estado:
+                    return [0, 0, 0]  # negro
                 else:
                     return [255, 0, 0]  # rojo
 
@@ -110,7 +114,7 @@ if legajo:
                         data=df_user_mapa,
                         get_position='[longitude, latitude]',
                         get_color='color',
-                        get_radius=80,
+                        get_radius=150,
                     )
                 ]
             ))
@@ -119,8 +123,8 @@ if legajo:
             st.subheader("📝 Registrar gestión")
             selected = st.selectbox("Seleccioná un comercio", df_filtrado['MERCHANT_NAME'].unique())
 
-            tipo_contacto = st.radio("Tipo de contacto", ["Presencial", "Teléfono"])
-            pudo_contactar = st.radio("¿Pudo contactar?", ["Sí", "No"])
+            tipo_contacto = st.radio("Tipo de contacto", ["Presencial", "Teléfono", "Mixto (Telefónico y Visita)"])
+            pudo_contactar = st.radio("¿Pudo contactar?", ["Sí", "No", "Comercio inexistente o cerrada definitiva"])
             respuesta = st.text_input("Respuesta del comercio")
             nueva_fecha = None
             if pudo_contactar == "No":
