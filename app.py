@@ -101,7 +101,7 @@ if legajo:
             df_user_mapa['color'] = df_filtrado['Estado'].apply(color_estado)
             df_user_mapa['merchant_name'] = df_filtrado['MERCHANT_NAME']
 
-            sst.pydeck_chart(pdk.Deck(
+            st.pydeck_chart(pdk.Deck(
                     map_style='mapbox://styles/mapbox/streets-v11',
                     initial_view_state=pdk.ViewState(
                     latitude=df_user_mapa['latitude'].mean(),
