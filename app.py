@@ -35,12 +35,12 @@ if legajo:
             st.subheader("📋 Tus comercios asignados")
 
             # Filtros
-            filtro_nombre = st.text_input("🔍 Buscar por nombre de comercio")
+            filtro_cuit = st.text_input("🔍 Buscar por número de CUIT")
             filtro_rubro = st.selectbox("📂 Filtrar por rubro", options=["Todos"] + sorted(df_user['RUBRO_MERCHANT_DESC'].dropna().unique().tolist()))
 
             df_filtrado = df_user.copy()
-            if filtro_nombre:
-                df_filtrado = df_filtrado[df_filtrado['MERCHANT_NAME'].str.contains(filtro_nombre, case=False, na=False)]
+            if filtro_cuit:
+               df_filtrado = df_filtrado[df_filtrado['DOCUMENTO_FISCAL_NUM'].astype(str) == filtro_cuit]
             if filtro_rubro != "Todos":
                 df_filtrado = df_filtrado[df_filtrado['RUBRO_MERCHANT_DESC'] == filtro_rubro]
 
