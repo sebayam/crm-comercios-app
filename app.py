@@ -99,25 +99,29 @@ if legajo:
                     return [255, 0, 0]  # rojo
 
             df_user_mapa['color'] = df_filtrado['Estado'].apply(color_estado)
+            df_user_mapa['merchant_name'] = df_filtrado['MERCHANT_NAME']
 
-            st.pydeck_chart(pdk.Deck(
-                map_style='mapbox://styles/mapbox/streets-v11',
-                initial_view_state=pdk.ViewState(
+            sst.pydeck_chart(pdk.Deck(
+                    map_style='mapbox://styles/mapbox/streets-v11',
+                    initial_view_state=pdk.ViewState(
                     latitude=df_user_mapa['latitude'].mean(),
-                    longitude=df_user_mapa['longitude'].mean(),
-                    zoom=11,
-                    pitch=0,
-                ),
-                layers=[
-                    pdk.Layer(
-                        'ScatterplotLayer',
-                        data=df_user_mapa,
-                        get_position='[longitude, latitude]',
-                        get_color='color',
+                       longitude=df_user_mapa['longitude'].mean(),
+                     zoom=11,
+                   pitch=0,
+                    ),
+                      layers=[
+                      pdk.Layer(
+                      'ScatterplotLayer',
+                    data=df_user_mapa,
+                    get_position='[longitude, latitude]',
+                       get_color='color',
                         get_radius=150,
-                    )
-                ]
-            ))
+                        pickable=True,  # ¡esto es importante para que funcione el tooltip!
+                     )
+                      ],
+                   tooltip={"text": "{merchant_name}"}
+                    ))
+
 
             st.divider()
             st.subheader("📝 Registrar gestión")
