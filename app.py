@@ -19,6 +19,9 @@ import sqlite3
 from datetime import datetime
 import pydeck as pdk
 
+st.set_page_config(page_title="CRM de Comercios", layout="wide")
+
+
 # 🔤 Estilo personalizado Montserrat + colores corporativos
 st.markdown("""
     <style>
@@ -62,8 +65,6 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-
-st.set_page_config(page_title="CRM de Comercios", layout="wide")
 
 # Cargar base de datos de comercios
 df = pd.read_csv("proveedores_mvp.csv")
