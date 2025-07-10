@@ -13,6 +13,56 @@ import sqlite3
 from datetime import datetime
 import pydeck as pdk
 
+import streamlit as st
+import pandas as pd
+import sqlite3
+from datetime import datetime
+import pydeck as pdk
+
+# 🔤 Estilo personalizado Montserrat + colores corporativos
+st.markdown("""
+    <style>
+    @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap');
+
+    html, body, [class*="css"]  {
+        font-family: 'Montserrat', sans-serif;
+        background-color: #F9F9F9;
+        color: #3D0074;
+    }
+
+    h1, h2, h3, h4 {
+        color: #3D0074;
+        font-weight: 700;
+    }
+
+    .stButton>button {
+        background-color: #FF6600;
+        color: white;
+        font-weight: bold;
+        border: none;
+        border-radius: 6px;
+        padding: 0.5em 1em;
+    }
+
+    .stButton>button:hover {
+        background-color: #e65300;
+    }
+
+    .stSelectbox label, .stTextInput label, .stRadio label {
+        color: #3D0074;
+        font-weight: 600;
+    }
+
+    .stTabs [data-baseweb="tab"] {
+        font-weight: 600;
+        color: #3D0074;
+    }
+
+    footer, #MainMenu {visibility: hidden;}
+    </style>
+""", unsafe_allow_html=True)
+
+
 st.set_page_config(page_title="CRM de Comercios", layout="wide")
 
 # Cargar base de datos de comercios
