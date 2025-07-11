@@ -70,28 +70,25 @@ st.markdown("""
 df = pd.read_csv("proveedores_mvp.csv")
 
 # Normalizar legajo como texto (quita decimales como .0)
-df['LEGAJO_ASESOR_NUM'] = df['LEGAJO_ASESOR_NUM'].astype(float).astype(int).astype(str)
+df['LEGAJO_ASESOR_NUM'] = pd.to_numeric(df['LEGAJO_ASESOR_NUM'], errors='coerce').dropna().astype(int).astype(str)
 
 
 st.title("CRM de Comercios")
 st.markdown("---")
 legajo_input = st.text_input("Ingresá tu legajo (ej: 55032):")
 
+
 if legajo_input.isdigit():
-    legajo = int(legajo_input)
+    legajo = legajo_input  # ya es string
     st.success(f"Sesión iniciada como colaborador {legajo}")
-    df['LEGAJO_ASESOR_NUM'] = df['LEGAJO_ASESOR_NUM'].astype(float).astype(int)
     df_user = df[df['LEGAJO_ASESOR_NUM'] == legajo]
-
-
-if legajo:
-    st.success(f"Sesión iniciada como colaborador {legajo}")
-    df_user = df[df['LEGAJO_ASESOR_NUM'].astype(str) == legajo]
 
     if df_user.empty:
         st.warning("No tenés comercios asignados.")
     else:
         tab1, tab2 = st.tabs(["📋 Comercios", "📖 Gestiones registradas"])
+        # (todo el resto sigue igual...)
+
 
         with tab1:
             st.subheader("📋 Tus comercios asignados")
