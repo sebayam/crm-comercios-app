@@ -69,9 +69,20 @@ st.markdown("""
 # Cargar base de datos de comercios
 df = pd.read_csv("proveedores_mvp.csv")
 
+# Normalizar legajo como texto (quita decimales como .0)
+df['LEGAJO_ASESOR_NUM'] = df['LEGAJO_ASESOR_NUM'].astype(float).astype(int).astype(str)
+
+
 st.title("CRM de Comercios")
 st.markdown("---")
-legajo = st.text_input("Ingresá tu legajo (ej: 55032):")
+legajo_input = st.text_input("Ingresá tu legajo (ej: 55032):")
+
+if legajo_input.isdigit():
+    legajo = int(legajo_input)
+    st.success(f"Sesión iniciada como colaborador {legajo}")
+    df['LEGAJO_ASESOR_NUM'] = df['LEGAJO_ASESOR_NUM'].astype(float).astype(int)
+    df_user = df[df['LEGAJO_ASESOR_NUM'] == legajo]
+
 
 if legajo:
     st.success(f"Sesión iniciada como colaborador {legajo}")
