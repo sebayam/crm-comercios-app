@@ -247,15 +247,38 @@ if legajo_input.isdigit():
                     check = conn.execute("SELECT COUNT(*) FROM gestiones WHERE legajo = ? AND comercio = ? AND DATE(fecha_registro) = DATE('now')", (legajo, selected)).fetchone()[0]
                     if check > 0:
                         st.warning("Ya registraste una gestión para este comercio hoy.")
-                    else:
-                        conn.execute("INSERT INTO gestiones (legajo, comercio, contacto, contacto_exitoso, respuesta, nueva_fecha, fecha_registro) VALUES (?, ?, ?, ?, ?, ?, ?)",
-                                    (legajo, selected, tipo_contacto, pudo_contactar, respuesta, str(nueva_fecha) if nueva_fecha else None, str(datetime.now())))
-                        conn.commit()
-                        guardar_en_google_sheets(gestion_dict)
-                        conn.close()
-                        st.success("Gestión registrada exitosamente.")
+else:
+    conn.execute("""
+        INSERT INTO gestiones (legajo, comercio, contacto, contacto_exitoso, respuesta, nueva_fecha, fecha_registro)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+    """, (
+        legajo,
+        selected,
+        tipo_contacto,
+        pudo_contactar,
+        respuesta,
+        str(nueva_fecha) if nueva_fecha else None,
+        str(datetime.now())
+    ))
+    conn.commit()
 
-        with tab2:
+    # Crear el diccionario para Google Sheets
+    gestion_dict = {
+        "legajo": legajo,
+        "comercio": selected,
+        "contacto": tipo_contacto,
+        "contacto_exitoso": pudo_contactar,
+        "respuesta": respuesta,
+        "nueva_fecha": str(nueva_fecha) if nueva_fecha else "",
+        "fecha_registro": str(datetime.now())
+    }
+
+    guardar_en_google_sheets(gestion_dict)
+    conn.close()
+    st.success("Gestión registrada exitosamente.")
+
+
+    with tab2:
             st.subheader("📖 Historial de gestiones")
             conn = sqlite3.connect("gestiones.db")
             conn.execute("""
