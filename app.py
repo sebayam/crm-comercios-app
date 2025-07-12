@@ -17,7 +17,27 @@ import streamlit as st
 import pandas as pd
 import sqlite3
 from datetime import datetime
-import pydeck as pdk
+import pydeck as pdk 
+
+import gspread
+from oauth2client.service_account import ServiceAccountCredentials
+
+def guardar_en_google_sheets(datos):
+    # Definir el alcance (scope)
+    scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
+
+    # Autenticarse con el archivo JSON
+    creds = ServiceAccountCredentials.from_json_keyfile_name("credenciales_sheets.json", scope)
+    client = gspread.authorize(creds)
+
+    # Abrir el archivo y la pestaña
+    sheet = client.open("CRM_gestiones").worksheet("Gestiones")
+
+    # Convertir a lista y guardar como nueva fila
+    fila = list(datos.values())
+    sheet.append_row(fila, value_input_option="USER_ENTERED")
+
+
 
 st.set_page_config(page_title="CRM de Comercios", layout="wide")
 
@@ -158,6 +178,8 @@ if legajo_input.isdigit():
 
             df_user_mapa['color'] = df_filtrado['Estado'].apply(color_estado)
             df_user_mapa['merchant_name'] = df_filtrado['MERCHANT_NAME']
+            df_user_mapa['Estado'] = df_filtrado['Estado']
+
 
             st.pydeck_chart(pdk.Deck(
                     map_style='mapbox://styles/mapbox/streets-v11',
@@ -173,7 +195,7 @@ if legajo_input.isdigit():
                                     data=df_user_mapa,
                                     get_position='[longitude, latitude]',
                                     get_color='color',
-                                    get_radius=40,  # radio base
+                                    get_radius=20,  # radio base
                                     radius_min_pixels=3,
                                     radius_max_pixels=100,
                                     radius_scale=1,
@@ -182,7 +204,14 @@ if legajo_input.isdigit():
                             )
 
                       ],
-                   tooltip={"text": "{merchant_name}"}
+                   tooltip={
+                            "html": "<b>Comercio:</b> {merchant_name}<br/><b>Estado:</b> {Estado}",
+                             "style": {
+                            "backgroundColor": "white",
+                            "color": "black"
+                                  }
+                                }
+
                     ))
 
 
@@ -222,6 +251,7 @@ if legajo_input.isdigit():
                         conn.execute("INSERT INTO gestiones (legajo, comercio, contacto, contacto_exitoso, respuesta, nueva_fecha, fecha_registro) VALUES (?, ?, ?, ?, ?, ?, ?)",
                                     (legajo, selected, tipo_contacto, pudo_contactar, respuesta, str(nueva_fecha) if nueva_fecha else None, str(datetime.now())))
                         conn.commit()
+                        guardar_en_google_sheets(gestion_dict)
                         conn.close()
                         st.success("Gestión registrada exitosamente.")
 
