@@ -226,68 +226,64 @@ if legajo_input.isdigit():
             if pudo_contactar == "No":
                 nueva_fecha = st.date_input("Reprogramar visita")
 
-            if st.button("Guardar gestión"):
-    if not respuesta:
-        st.warning("Por favor, completá la respuesta del comercio.")
-    else:
-        conn = sqlite3.connect("gestiones.db")
-        conn.execute("""
-            CREATE TABLE IF NOT EXISTS gestiones (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                legajo TEXT,
-                comercio TEXT,
-                contacto TEXT,
-                contacto_exitoso TEXT,
-                respuesta TEXT,
-                nueva_fecha TEXT,
-                fecha_registro TEXT
-            )
-        """)
-        conn.commit()
+        if st.button("Guardar gestión"):
+            if not respuesta:
+                    st.warning("Por favor, completá la respuesta del comercio.")
+            else:
+                    conn = sqlite3.connect("gestiones.db")
+                    conn.execute("""
+                        CREATE TABLE IF NOT EXISTS gestiones (
+                            id INTEGER PRIMARY KEY AUTOINCREMENT,
+                            legajo TEXT,
+                            comercio TEXT,
+                            contacto TEXT,
+                            contacto_exitoso TEXT,
+                            respuesta TEXT,
+                            nueva_fecha TEXT,
+                            fecha_registro TEXT
+                        )
+                    """)
+                    conn.commit()
 
-        legajo = st.session_state["legajo"]
+                    legajo = st.session_state["legajo"]
 
-        # Verificamos si ya existe una gestión hoy
-        check = conn.execute(
-            "SELECT COUNT(*) FROM gestiones WHERE legajo = ? AND comercio = ? AND DATE(fecha_registro) = DATE('now')",
-            (legajo, selected)
-        ).fetchone()[0]
+                    # Verificamos si ya existe una gestión hoy
+                    check = conn.execute(
+                        "SELECT COUNT(*) FROM gestiones WHERE legajo = ? AND comercio = ? AND DATE(fecha_registro) = DATE('now')",
+                        (legajo, selected)
+                    ).fetchone()[0]
 
-        if check > 0:
-            st.warning("Ya registraste una gestión para este comercio hoy.")
-        else:
-            conn.execute("""
-                INSERT INTO gestiones (legajo, comercio, contacto, contacto_exitoso, respuesta, nueva_fecha, fecha_registro)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
-            """, (
-                legajo,
-                selected,
-                tipo_contacto,
-                pudo_contactar,
-                respuesta,
-                str(nueva_fecha) if nueva_fecha else None,
-                str(datetime.now())
-            ))
-            conn.commit()
+                    if check > 0:
+                        st.warning("Ya registraste una gestión para este comercio hoy.")
+                    else:
+                        conn.execute("""
+                            INSERT INTO gestiones (legajo, comercio, contacto, contacto_exitoso, respuesta, nueva_fecha, fecha_registro)
+                            VALUES (?, ?, ?, ?, ?, ?, ?)
+                        """, (
+                            legajo,
+                            selected,
+                            tipo_contacto,
+                            pudo_contactar,
+                            respuesta,
+                            str(nueva_fecha) if nueva_fecha else None,
+                            str(datetime.now())
+                        ))
+                        conn.commit()
 
-            gestion_dict = {
-                "legajo": legajo,
-                "comercio": selected,
-                "contacto": tipo_contacto,
-                "contacto_exitoso": pudo_contactar,
-                "respuesta": respuesta,
-                "nueva_fecha": str(nueva_fecha) if nueva_fecha else "",
-                "fecha_registro": str(datetime.now())
-            }
+                        gestion_dict = {
+                            "legajo": legajo,
+                            "comercio": selected,
+                            "contacto": tipo_contacto,
+                            "contacto_exitoso": pudo_contactar,
+                            "respuesta": respuesta,
+                            "nueva_fecha": str(nueva_fecha) if nueva_fecha else "",
+                            "fecha_registro": str(datetime.now())
+                        }
 
-            guardar_en_google_sheets(gestion_dict)
-            st.success("Gestión registrada exitosamente.")
+                        guardar_en_google_sheets(gestion_dict)
+                        st.success("Gestión registrada exitosamente.")
 
-        conn.close()
-
-
-        st.success("Gestión registrada exitosamente.")
-
+                    conn.close()
 
     with tab2:
             st.subheader("📖 Historial de gestiones")
