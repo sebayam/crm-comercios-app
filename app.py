@@ -70,8 +70,7 @@ st.markdown("""
 df = pd.read_csv("proveedores_mvp.csv")
 
 # Normalizar legajo como texto (quita decimales como .0)
-df['LEGAJO_ASESOR_NUM'] = pd.to_numeric(df['LEGAJO_ASESOR_NUM'], errors='coerce').dropna().astype(int).astype(str)
-
+df['LEGAJO_ASESOR_NUM'] = pd.to_numeric(df['LEGAJO_ASESOR_NUM'], errors='coerce').fillna(0).astype(int).astype(str)
 
 st.title("CRM de Comercios")
 st.markdown("---")
@@ -170,13 +169,18 @@ if legajo_input.isdigit():
                     ),
                       layers=[
                       pdk.Layer(
-                      'ScatterplotLayer',
-                    data=df_user_mapa,
-                    get_position='[longitude, latitude]',
-                       get_color='color',
-                        get_radius=150,
-                        pickable=True,  # ¡esto es importante para que funcione el tooltip!
-                     )
+                                 "ScatterplotLayer",
+                                    data=df_user_mapa,
+                                    get_position='[longitude, latitude]',
+                                    get_color='color',
+                                    get_radius=40,  # radio base
+                                    radius_min_pixels=3,
+                                    radius_max_pixels=100,
+                                    radius_scale=1,
+                                    pickable=True,
+                                    auto_highlight=True  # 👈 esto permite el efecto hover
+                            )
+
                       ],
                    tooltip={"text": "{merchant_name}"}
                     ))
