@@ -13,17 +13,28 @@ import sqlite3
 from datetime import datetime
 import pydeck as pdk
 import gspread
+import os
+import json
 from oauth2client.service_account import ServiceAccountCredentials
 
+# Ámbito de acceso a Google Sheets
+scope = [
+    "https://spreadsheets.google.com/feeds",
+    "https://www.googleapis.com/auth/drive"
+]
+
+# ❌ NO USAR ARCHIVO LOCAL: credenciales_sheets.json
+# ✅ USAR SECRETO DE STREAMLIT
+service_account_info = json.loads(st.secrets["google_sheets"])
+creds = ServiceAccountCredentials.from_json_keyfile_dict(service_account_info, scope)
+
 def guardar_en_google_sheets(datos):
-    scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
-    creds = ServiceAccountCredentials.from_json_keyfile_name("credenciales_sheets.json", scope)
     client = gspread.authorize(creds)
     sheet = client.open("CRM_gestiones").worksheet("Gestiones")
     fila = list(datos.values())
     sheet.append_row(fila, value_input_option="USER_ENTERED")
 
-st.set_page_config(page_title="CRM de Comercios", layout="wide")
+
 
 # 🔤 Estilo personalizado Montserrat + colores corporativos
 st.markdown("""
@@ -74,7 +85,7 @@ if "legajo" not in st.session_state:
     if st.button("Iniciar sesión"):
         if legajo_input.isdigit():
             st.session_state["legajo"] = legajo_input
-            st.experimental_rerun()
+            st.rerun()
         else:
             st.warning("Ingresá un legajo válido.")
     st.stop()
@@ -241,9 +252,14 @@ else:
                         "fecha_registro": str(datetime.now())
                     }
 
-                    guardar_en_google_sheets(gestion_dict)
-                    st.success("Gestión registrada exitosamente.")
-                conn.close()
+                    try:
+                        guardar_en_google_sheets(gestion_dict)
+                        st.success("Gestión registrada exitosamente.")
+                    except Exception as e:
+                        st.error(f"⚠️ Error al guardar en Google Sheets: {e}")
+
+                        st.success("Gestión registrada exitosamente.")
+                    conn.close()
 
     with tab2:
         st.subheader("📖 Historial de gestiones")
