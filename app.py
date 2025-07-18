@@ -74,7 +74,7 @@ if "legajo" not in st.session_state:
     if st.button("Iniciar sesión"):
         if legajo_input.isdigit():
             st.session_state["legajo"] = legajo_input
-            st.experimental_rerun()
+            st.rerun()
         else:
             st.warning("Ingresá un legajo válido.")
     st.stop()
