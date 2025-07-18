@@ -12,52 +12,33 @@ import pandas as pd
 import sqlite3
 from datetime import datetime
 import pydeck as pdk
-
-import streamlit as st
-import pandas as pd
-import sqlite3
-from datetime import datetime
-import pydeck as pdk 
-
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 
 def guardar_en_google_sheets(datos):
-    # Definir el alcance (scope)
     scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
-
-    # Autenticarse con el archivo JSON
     creds = ServiceAccountCredentials.from_json_keyfile_name("credenciales_sheets.json", scope)
     client = gspread.authorize(creds)
-
-    # Abrir el archivo y la pestaña
     sheet = client.open("CRM_gestiones").worksheet("Gestiones")
-
-    # Convertir a lista y guardar como nueva fila
     fila = list(datos.values())
     sheet.append_row(fila, value_input_option="USER_ENTERED")
 
-
-
 st.set_page_config(page_title="CRM de Comercios", layout="wide")
+LEGAJOS_LIDERES = ["32126"]
 
-
-# 🔤 Estilo personalizado Montserrat + colores corporativos
+# Estilos
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap');
-
     html, body, [class*="css"]  {
         font-family: 'Montserrat', sans-serif;
         background-color: #F9F9F9;
         color: #3D0074;
     }
-
     h1, h2, h3, h4 {
         color: #3D0074;
         font-weight: 700;
     }
-
     .stButton>button {
         background-color: #FF6600;
         color: white;
@@ -66,51 +47,72 @@ st.markdown("""
         border-radius: 6px;
         padding: 0.5em 1em;
     }
-
     .stButton>button:hover {
         background-color: #e65300;
     }
-
     .stSelectbox label, .stTextInput label, .stRadio label {
         color: #3D0074;
         font-weight: 600;
     }
-
     .stTabs [data-baseweb="tab"] {
         font-weight: 600;
         color: #3D0074;
     }
-
     header, footer, #MainMenu {visibility: hidden;}
     </style>
 """, unsafe_allow_html=True)
 
-
 # Cargar base de datos de comercios
 df = pd.read_csv("proveedores_mvp.csv")
-
-# Normalizar legajo como texto (quita decimales como .0)
-df['LEGAJO_ASESOR_NUM'] = pd.to_numeric(df['LEGAJO_ASESOR_NUM'], errors='coerce').fillna(0).astype(int).astype(str)
+df['LEGAJO_ASESOR_NUM'] = pd.to_numeric(df['LEGAJO_ASESOR_NUM'], errors='coerce')
+df_validos = df[df['LEGAJO_ASESOR_NUM'].notna()].copy()
+df_validos['LEGAJO_ASESOR_NUM'] = df_validos['LEGAJO_ASESOR_NUM'].astype('Int64').astype(str)
+df = df_validos
 
 st.title("CRM de Comercios")
 st.markdown("---")
 legajo_input = st.text_input("Ingresá tu legajo (ej: 55032):")
 
-
 if legajo_input.isdigit():
-    legajo = legajo_input  # ya es string
-    st.success(f"Sesión iniciada como colaborador {legajo}")
-    df_user = df[df['LEGAJO_ASESOR_NUM'] == legajo]
+    legajo = legajo_input
 
-    if df_user.empty:
-        st.warning("No tenés comercios asignados.")
+    if legajo in LEGAJOS_LIDERES:
+        st.success(f"Sesión iniciada como líder {legajo}")
+
+        st.subheader("📊 Reporte de gestiones (modo líder)")
+        conn = sqlite3.connect("gestiones.db")
+        df_gestiones = pd.read_sql_query("SELECT * FROM gestiones", conn)
+        conn.close()
+
+        if df_gestiones.empty:
+            st.info("No hay gestiones registradas todavía.")
+        else:
+            df_gestiones['fecha_registro'] = pd.to_datetime(df_gestiones['fecha_registro']).dt.date
+            tab_resumen, tab_detalle = st.tabs(["📈 Resumen diario", "📄 Todas las gestiones"])
+
+            with tab_resumen:
+                resumen = df_gestiones.groupby(['fecha_registro', 'legajo'])['id'].count().reset_index()
+                resumen = resumen.rename(columns={'id': 'cantidad_gestiones'})
+                st.dataframe(resumen)
+                st.download_button("📥 Descargar resumen CSV", data=resumen.to_csv(index=False), file_name="resumen_gestiones.csv")
+
+            with tab_detalle:
+                st.dataframe(df_gestiones)
+                st.download_button("📥 Descargar todas las gestiones (CSV)", data=df_gestiones.to_csv(index=False), file_name="detalle_gestiones.csv")
+
+        st.stop()
+
     else:
-        tab1, tab2 = st.tabs(["📋 Comercios", "📖 Gestiones registradas"])
-        # (todo el resto sigue igual...)
+        st.success(f"Sesión iniciada como colaborador {legajo}")
+        df_user = df[df['LEGAJO_ASESOR_NUM'] == legajo]
 
+        if df_user.empty:
+            st.warning("No tenés comercios asignados.")
+        else:
+            tab1, tab2 = st.tabs(["📋 Comercios", "📖 Gestiones registradas"])
 
-        with tab1:
-            st.subheader("📋 Tus comercios asignados")
+            with tab1:
+                st.subheader("📋 Tus comercios asignados")
 
             # Filtros
             filtro_cuit = st.text_input("🔍 Buscar por número de CUIT")
