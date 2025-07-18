@@ -251,7 +251,6 @@ if legajo_input.isdigit():
                         conn.execute("INSERT INTO gestiones (legajo, comercio, contacto, contacto_exitoso, respuesta, nueva_fecha, fecha_registro) VALUES (?, ?, ?, ?, ?, ?, ?)",
                                     (legajo, selected, tipo_contacto, pudo_contactar, respuesta, str(nueva_fecha) if nueva_fecha else None, str(datetime.now())))
                         conn.commit()
-                        guardar_en_google_sheets(gestion_dict)
                         conn.close()
                         st.success("Gestión registrada exitosamente.")
 
