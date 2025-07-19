@@ -113,10 +113,10 @@ xyzservices==2025.1.0
 yarl==1.20.0
 gspread
 oauth2client
-streamlit
+streamlit==1.35.0
 pandas
 pydeck
 gspread
 oauth2client
-geopy
-sqlite3
+geopy==2.4.0
+
