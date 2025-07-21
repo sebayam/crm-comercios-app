@@ -138,7 +138,20 @@ if legajo_input.isdigit():
                 st.pydeck_chart(pdk.Deck(
                     map_style='mapbox://styles/mapbox/streets-v11',
                     initial_view_state=pdk.ViewState(latitude=df_map['latitude'].mean(), longitude=df_map['longitude'].mean(), zoom=12),
-                    layers=[pdk.Layer("ScatterplotLayer", data=df_map, get_position='[longitude, latitude]', get_color='color', get_radius=50)]))
+                    layers=[pdk.Layer(
+                        "ScatterplotLayer",
+                        data=df_map,
+                        get_position='[longitude, latitude]',
+                        get_color='color',
+                        get_radius=50,
+                        pickable=True,
+                        auto_highlight=True
+                    )],
+                    tooltip={
+                        "html": "<b>{merchant_name}</b><br/><b>Estado:</b> {Estado}",
+                        "style": {"backgroundColor": "white", "color": "black"}
+                    }
+                ))
                 st.divider()
                 st.subheader("📝 Registrar gestión")
                 selected = st.selectbox("Comercio", df_filtrado['MERCHANT_NAME'].unique())
@@ -194,6 +207,10 @@ if legajo_input.isdigit():
                         df_plan['Estado'] = df_plan['MERCHANT_NAME'].apply(estado_gestion)
                         df_plan['Días sin contacto'] = df_plan['MERCHANT_NAME'].apply(dias_sin_contacto)
                         df_plan = df_plan[df_plan['Estado'].isin(["No gestionado", "Reprogramado"])]
+
+                        # FILTRAR FILAS CON COORDENADAS INVÁLIDAS
+                        df_plan = df_plan[df_plan['LATITUD'].notna() & df_plan['LONGITUD'].notna()].copy()
+
                         df_plan['Distancia (km)'] = df_plan.apply(lambda row: geodesic(ubicacion_usuario, (row['LATITUD'], row['LONGITUD'])).km, axis=1)
                         df_plan = df_plan.sort_values(by=['Días sin contacto','Distancia (km)'], ascending=[False,True]).head(10).reset_index(drop=True)
                         df_plan['Orden'] = df_plan.index + 1
