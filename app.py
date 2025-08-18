@@ -68,8 +68,37 @@ st.title("CRM de Comercios")
 st.markdown("---")
 legajo_input = st.text_input("Ingresá tu legajo (ej: 55032):")
 
+def asegurar_tabla():
+    """Crea la tabla si no existe y agrega documento_fiscal_num si faltara."""
+    con = sqlite3.connect("gestiones.db")
+    cur = con.cursor()
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS gestiones (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            legajo TEXT,
+            comercio TEXT,
+            documento_fiscal_num TEXT,
+            contacto TEXT,
+            contacto_exitoso TEXT,
+            respuesta TEXT,
+            nueva_fecha TEXT,
+            fecha_registro TEXT
+        )
+    """)
+    # Intentar agregar columna si la tabla existía sin ella
+    try:
+        cur.execute("ALTER TABLE gestiones ADD COLUMN documento_fiscal_num TEXT")
+    except sqlite3.OperationalError:
+        pass  # ya existe
+    con.commit()
+    con.close()
+
 if legajo_input.isdigit():
     legajo = legajo_input
+
+    # Aseguramos esquema de tabla apenas hay sesión
+    asegurar_tabla()
+
     if legajo in LEGAJOS_LIDERES:
         st.success(f"Sesión iniciada como líder {legajo}")
         conn = sqlite3.connect("gestiones.db")
@@ -86,6 +115,7 @@ if legajo_input.isdigit():
                 st.dataframe(resumen)
                 st.download_button("📥 Descargar resumen", resumen.to_csv(index=False), file_name="resumen.csv")
             with tab2:
+                # 👉 Incluye documento_fiscal_num porque usamos SELECT *
                 st.dataframe(df_gestiones)
                 st.download_button("📥 Descargar detalle", df_gestiones.to_csv(index=False), file_name="gestiones.csv")
         st.stop()
@@ -106,29 +136,28 @@ if legajo_input.isdigit():
                     df_filtrado = df_filtrado[df_filtrado['DOCUMENTO_FISCAL_NUM'].astype(str).str.contains(filtro_cuit)]
                 if filtro_rubro != "Todos":
                     df_filtrado = df_filtrado[df_filtrado['RUBRO_MERCHANT_DESC'] == filtro_rubro]
+
+                # Cargar gestiones del colaborador
                 conn = sqlite3.connect("gestiones.db")
-                conn.execute("""
-                    CREATE TABLE IF NOT EXISTS gestiones (
-                        id INTEGER PRIMARY KEY AUTOINCREMENT,
-                        legajo TEXT,
-                        comercio TEXT,
-                        contacto TEXT,
-                        contacto_exitoso TEXT,
-                        respuesta TEXT,
-                        nueva_fecha TEXT,
-                        fecha_registro TEXT
-                    )""")
                 gestiones = pd.read_sql_query("SELECT * FROM gestiones WHERE legajo = ?", conn, params=(legajo,))
                 conn.close()
+
                 def estado_gestion(comercio):
                     registros = gestiones[gestiones['comercio'] == comercio]
-                    if registros.empty: return "🔴 No gestionado"
-                    if registros['respuesta'].str.contains("cerrada definitiva", case=False, na=False).any(): return "⚫ Cerrado"
-                    if registros['contacto_exitoso'].str.contains("Sí", na=False).any(): return "🟢 Contactado"
-                    if registros['nueva_fecha'].notna().any(): return "🟠 Reprogramado"
+                    if registros.empty:
+                        return "🔴 No gestionado"
+                    if registros['respuesta'].str.contains("cerrada definitiva", case=False, na=False).any():
+                        return "⚫ Cerrado"
+                    if registros['contacto_exitoso'].str.contains("Sí", na=False).any():
+                        return "🟢 Contactado"
+                    if registros['contacto_exitoso'].str.contains("Reprogramar", na=False).any():
+                        return "🟠 Reprogramado"
                     return "🔴 No gestionado"
+
                 df_filtrado['Estado'] = df_filtrado['MERCHANT_NAME'].apply(estado_gestion)
+
                 st.dataframe(df_filtrado[['MERCHANT_NAME','DOCUMENTO_FISCAL_NUM','DOMICILIO_FORMATEADO_TXT','RUBRO_MERCHANT_DESC','Estado']])
+
                 st.divider()
                 st.subheader("🗺️ Mapa")
                 df_map = df_filtrado.rename(columns={'LATITUD': 'latitude','LONGITUD': 'longitude'})
@@ -152,24 +181,61 @@ if legajo_input.isdigit():
                         "style": {"backgroundColor": "white", "color": "black"}
                     }
                 ))
+
+                # -------------------------------
+                # 📝 Registrar gestión (modificado)
+                # -------------------------------
                 st.divider()
                 st.subheader("📝 Registrar gestión")
+
                 selected = st.selectbox("Comercio", df_filtrado['MERCHANT_NAME'].unique())
                 tipo_contacto = st.radio("Tipo de contacto", ["Presencial", "Teléfono", "Mixto"])
-                pudo_contactar = st.radio("¿Pudo contactar?", ["Sí", "No", "Comercio inexistente o cerrada definitiva"])
+
+                # ➕ Agregamos "Reprogramar" y no pedimos fecha
+                pudo_contactar = st.radio(
+                    "¿Pudo contactar?",
+                    ["Sí", "No", "Reprogramar", "Comercio inexistente o cerrada definitiva"]
+                )
+
                 respuesta = st.text_input("Respuesta del comercio")
-                nueva_fecha = st.date_input("Reprogramar visita", disabled=(pudo_contactar != "No")) if pudo_contactar == "No" else None
+
+                # Obtener documento_fiscal_num del comercio seleccionado
+                try:
+                    documento_fiscal_num = str(
+                        df_filtrado.loc[df_filtrado['MERCHANT_NAME'] == selected, 'DOCUMENTO_FISCAL_NUM'].iloc[0]
+                    )
+                except Exception:
+                    documento_fiscal_num = ""
+
                 if st.button("Guardar gestión"):
                     if not respuesta:
                         st.warning("Por favor completá la respuesta.")
                     else:
                         conn = sqlite3.connect("gestiones.db")
-                        check = conn.execute("SELECT COUNT(*) FROM gestiones WHERE legajo = ? AND comercio = ? AND DATE(fecha_registro) = DATE('now')", (legajo, selected)).fetchone()[0]
+
+                        check = conn.execute(
+                            "SELECT COUNT(*) FROM gestiones WHERE legajo = ? AND comercio = ? AND DATE(fecha_registro) = DATE('now')",
+                            (legajo, selected)
+                        ).fetchone()[0]
+
                         if check > 0:
                             st.warning("Ya registraste una gestión hoy.")
                         else:
-                            conn.execute("INSERT INTO gestiones (legajo, comercio, contacto, contacto_exitoso, respuesta, nueva_fecha, fecha_registro) VALUES (?, ?, ?, ?, ?, ?, ?)",
-                                         (legajo, selected, tipo_contacto, pudo_contactar, respuesta, str(nueva_fecha) if nueva_fecha else None, str(datetime.now())))
+                            conn.execute("""
+                                INSERT INTO gestiones (
+                                    legajo, comercio, documento_fiscal_num, contacto, contacto_exitoso,
+                                    respuesta, nueva_fecha, fecha_registro
+                                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                            """, (
+                                legajo,
+                                selected,
+                                documento_fiscal_num,  # <- siempre guardado
+                                tipo_contacto,
+                                pudo_contactar,
+                                respuesta,
+                                None,                   # <- no pedimos fecha para Reprogramar
+                                str(datetime.now())
+                            ))
                             conn.commit()
                             conn.close()
                             st.success("Gestión registrada exitosamente.")
@@ -180,6 +246,7 @@ if legajo_input.isdigit():
                 df_historial = pd.read_sql_query("SELECT * FROM gestiones WHERE legajo = ?", conn, params=(legajo,))
                 conn.close()
                 st.dataframe(df_historial)
+                # 👉 Incluye documento_fiscal_num en el CSV
                 st.download_button("📥 Descargar CSV", df_historial.to_csv(index=False), file_name="historial.csv")
 
             with tab3:
@@ -194,30 +261,39 @@ if legajo_input.isdigit():
                         gestiones = pd.read_sql_query("SELECT * FROM gestiones WHERE legajo = ?", conn, params=(legajo,))
                         conn.close()
                         gestiones['fecha_registro'] = pd.to_datetime(gestiones['fecha_registro'])
+
                         def dias_sin_contacto(comercio):
                             registros = gestiones[gestiones['comercio'] == comercio]
                             return 999 if registros.empty else (datetime.now() - registros['fecha_registro'].max()).days
-                        def estado_gestion(comercio):
+
+                        def estado_gestion_plan(comercio):
                             registros = gestiones[gestiones['comercio'] == comercio]
-                            if registros.empty: return "No gestionado"
-                            if registros['contacto_exitoso'].str.contains("Sí", na=False).any(): return "Contactado"
-                            if registros['nueva_fecha'].notna().any(): return "Reprogramado"
+                            if registros.empty:
+                                return "No gestionado"
+                            if registros['contacto_exitoso'].str.contains("Sí", na=False).any():
+                                return "Contactado"
+                            if registros['contacto_exitoso'].str.contains("Reprogramar", na=False).any():
+                                return "Reprogramado"
                             return "No gestionado"
+
                         df_plan = df_user.copy()
-                        df_plan['Estado'] = df_plan['MERCHANT_NAME'].apply(estado_gestion)
+                        df_plan['Estado'] = df_plan['MERCHANT_NAME'].apply(estado_gestion_plan)
                         df_plan['Días sin contacto'] = df_plan['MERCHANT_NAME'].apply(dias_sin_contacto)
                         df_plan = df_plan[df_plan['Estado'].isin(["No gestionado", "Reprogramado"])]
 
                         # FILTRAR FILAS CON COORDENADAS INVÁLIDAS
                         df_plan = df_plan[df_plan['LATITUD'].notna() & df_plan['LONGITUD'].notna()].copy()
 
-                        df_plan['Distancia (km)'] = df_plan.apply(lambda row: geodesic(ubicacion_usuario, (row['LATITUD'], row['LONGITUD'])).km, axis=1)
+                        df_plan['Distancia (km)'] = df_plan.apply(
+                            lambda row: geodesic(ubicacion_usuario, (row['LATITUD'], row['LONGITUD'])).km, axis=1
+                        )
                         df_plan = df_plan.sort_values(by=['Días sin contacto','Distancia (km)'], ascending=[False,True]).head(10).reset_index(drop=True)
                         df_plan['Orden'] = df_plan.index + 1
                         df_plan['latitude'] = df_plan['LATITUD']
                         df_plan['longitude'] = df_plan['LONGITUD']
                         df_plan['color'] = [[0, 150, 255]] * len(df_plan)
                         df_plan['text'] = df_plan['Orden'].astype(str)
+
                         st.dataframe(df_plan[['Orden','MERCHANT_NAME','DOMICILIO_FORMATEADO_TXT','Estado','Días sin contacto','Distancia (km)']])
                         st.pydeck_chart(pdk.Deck(
                             map_style='mapbox://styles/mapbox/streets-v11',
