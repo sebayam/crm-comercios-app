@@ -156,7 +156,7 @@ if legajo_input.isdigit():
 
                 df_filtrado['Estado'] = df_filtrado['MERCHANT_NAME'].apply(estado_gestion)
 
-                st.dataframe(df_filtrado[['MERCHANT_NAME','DOCUMENTO_FISCAL_NUM','DOMICILIO_FORMATEADO_TXT','RUBRO_MERCHANT_DESC','Estado']])
+                st.dataframe(df_filtrado[['MERCHANT_NAME','DOCUMENTO_FISCAL_NUM','DOMICILIO_FORMATEADO_TXT','TELEFONO_CARACTERISTICA_TXT,'RUBRO_MERCHANT_DESC','Estado']])
 
                 st.divider()
                 st.subheader("🗺️ Mapa")
